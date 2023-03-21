@@ -5,7 +5,7 @@ const Controller = {
     const data = Object.fromEntries(new FormData(form));
     document.getElementById("table-body").innerHTML = "Loading ...";
     document.getElementById("table-head").innerHTML = "";
-    const response = fetch(`/search?q=${data.query}`).then((response) => {
+    const response = fetch(`/search?q=${data.query}&total=${data.total}`).then((response) => {
       response.json().then((results) => {
         Controller.updateTable(results);
       });

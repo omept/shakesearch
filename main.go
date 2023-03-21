@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -49,7 +50,18 @@ func handleSearch(searcher Searcher) func(w http.ResponseWriter, r *http.Request
 			w.Write([]byte("missing search query in URL params"))
 			return
 		}
-		results := searcher.Search(query[0])
+		totalV, ok := r.URL.Query()["total"]
+		total := -1
+		if ok {
+			t, err := strconv.Atoi(totalV[0])
+			if err != nil {
+				total = -1
+			} else {
+				total = t
+			}
+		}
+
+		results := searcher.Search(query[0], total)
 		buf := &bytes.Buffer{}
 		enc := json.NewEncoder(buf)
 		err := enc.Encode(results)
@@ -73,10 +85,20 @@ func (s *Searcher) Load(filename string) error {
 	return nil
 }
 
-func (s *Searcher) Search(query string) []string {
-	idxs := s.SuffixArray.Lookup([]byte(strings.ToLower(query)), -1)
+func (s *Searcher) Search(query string, total int) []string {
+
+	if total <= 0 {
+		total = -1
+	}
+
+	idxs := s.SuffixArray.Lookup([]byte(strings.ToLower(query)), total)
 	results := []string{}
+	lastWordIndex := len(s.CompleteWorks)
+	// lastWordIndex := strings.LastIndex(s.CompleteWorks, "eBooks.")
 	for _, idx := range idxs {
+		if (idx-250) < 0 || (idx+250) > lastWordIndex {
+			continue
+		}
 		subset := s.CompleteWorks[idx-250 : idx+250]
 		subset = strings.ReplaceAll(subset, query, fmt.Sprintf("<b>%s</b>", query))
 		results = append(results, subset)
